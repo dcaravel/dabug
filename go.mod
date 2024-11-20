@@ -1,4 +1,4 @@
-module github.com/davidwashere/dabug
+module github.com/dcaravel/dabug
 
 go 1.21.0
 
