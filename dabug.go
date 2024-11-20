@@ -212,7 +212,9 @@ func (l *logger) genPrefix(line *line) {
 		}
 		c.WriteString(kv)
 	}
-	c.WriteString(")")
+	if len(l.contexts) > 0 {
+		c.WriteString(")")
+	}
 
 	p := fmt.Sprintf("%s%s%s ", defLinePrefix, line.src, c.String())
 
