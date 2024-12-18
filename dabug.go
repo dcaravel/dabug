@@ -15,12 +15,17 @@ import (
 
 // Add easy log for variables
 // Add single line quick logs that do not require flush
+// switch context to be map, sort the keys
 
-type logger struct {
+type Dabugger struct {
 	// lines contains lines waiting to be flushed
 	lines      []*line
 	linesMutex sync.Mutex
 	contexts   []*context
+	writer     io.Writer
+	linePrefix string
+	autoFlush  bool
+	stackSkips int
 }
 
 type context struct {
@@ -45,117 +50,162 @@ func (s source) String() string {
 }
 
 var (
-	defLogger     = &logger{}
-	defWriter     io.Writer
-	defLinePrefix = ""
-	autoflush     = true
-	sectionBeg    = "-----"
-	sectionEnd    = "====="
+	defDabugger = &Dabugger{}
+	sectionBeg  = "-----"
+	sectionEnd  = "====="
 	// baseDir   string
 )
 
 func init() {
-	defWriter = os.Stdout
-	// baseDir = filepath.Dir(os.Args[0])
+	defDabugger = New()
+	defDabugger.stackSkips++
+}
+
+func New() *Dabugger {
+	return &Dabugger{
+		writer:     os.Stdout,
+		autoFlush:  true,
+		stackSkips: 4,
+	}
 }
 
 // Writer sets the writer to print statements to.
 func Writer(writer io.Writer) {
-	defWriter = writer
+	defDabugger.Writer(writer)
+}
+
+func (d *Dabugger) Writer(writer io.Writer) {
+	d.writer = writer
 }
 
 // LinePrefix sets a prefix to prepend to every line printed.
 func LinePrefix(prefix string) {
-	defLinePrefix = prefix
+	defDabugger.LinePrefix(prefix)
+}
+
+func (d *Dabugger) LinePrefix(prefix string) {
+	d.linePrefix = prefix
 }
 
 func AutoFlush(flush bool) {
-	autoflush = flush
-	if len(defLogger.lines) > 0 {
-		Flush()
+	defDabugger.AutoFlush(flush)
+}
+
+func (d *Dabugger) AutoFlush(flush bool) {
+	d.autoFlush = flush
+	if len(defDabugger.lines) > 0 {
+		d.Flush()
 	}
 }
 
-func Msg(msg string) {
-	defLogger.appendMsg(msg)
+func Msg(format string, v ...any) {
+	defDabugger.Msg(format, v...)
+}
+
+func (l *Dabugger) Msg(format string, v ...any) {
+	l.appendMsg(fmt.Sprintf(format, v...))
 }
 
 func Here() {
-	defLogger.appendEmpty()
+	defDabugger.Here()
+}
+
+func (l *Dabugger) Here() {
+	l.appendEmpty()
 }
 
 // Objs will append a line to the logger with things printed.
 func Objs(things ...any) {
+	defDabugger.Objs(things...)
+}
+
+func (l *Dabugger) Objs(things ...any) {
 	var msgs []string
 	for i, t := range things {
 		msg := fmt.Sprintf("[%d] %#v", i, t)
 		msgs = append(msgs, msg)
 	}
-	defLogger.appendMsg(strings.Join(msgs, ", "))
+	l.appendMsg(strings.Join(msgs, ", "))
 }
 
 // AddContext adds a key/value pair that will be prepended to log
 func AddContext(key, value string) {
-	defLogger.AddContext(key, value)
+	defDabugger.AddContext(key, value)
 }
 
-func (l *logger) AddContext(key, value string) {
+func (l *Dabugger) AddContext(key, value string) {
 	l.contexts = append(l.contexts, &context{key, value})
 }
 
 func RemoveContext(key string) {
-	defLogger.RemoveContext(key)
+	defDabugger.RemoveContext(key)
 }
 
-func (l *logger) RemoveContext(key string) {
+func (l *Dabugger) RemoveContext(key string) {
+	newContexts := []*context{}
+	for _, c := range l.contexts {
+		if c.key != key {
+			newContexts = append(newContexts, c)
+		}
+	}
 
+	l.contexts = newContexts
 }
 
 func RemoveAllContext() {
+	defDabugger.RemoveAllContext()
+}
 
+func (l *Dabugger) RemoveAllContext() {
+	clear(l.contexts)
+	l.contexts = nil
 }
 
 func RemoveTopContext() {
-	defLogger.removeTopContext()
+	defDabugger.RemoveTopContext()
 }
 
-func (l *logger) removeTopContext() {
+func (l *Dabugger) RemoveTopContext() {
 	l.contexts = l.contexts[:len(l.contexts)-1]
 }
 
 func Flush() {
-	defLogger.linesMutex.Lock()
-	defer defLogger.linesMutex.Unlock()
+	defDabugger.Flush()
+}
 
-	if len(defLogger.lines) == 0 {
+func (d *Dabugger) Flush() {
+	d.linesMutex.Lock()
+	defer d.linesMutex.Unlock()
+
+	if len(d.lines) == 0 {
 		// Nothing to do
 		return
 	}
 
 	// preprocess line prefix len so that all messages are aligned
 	maxPrefixLen := -1
-	for _, l := range defLogger.lines {
+	for _, l := range d.lines {
 		maxPrefixLen = max(maxPrefixLen, len(l.prefix))
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("%s%s\n", defLinePrefix, sectionBeg))
+	sb.WriteString(fmt.Sprintf("%s%s\n", d.linePrefix, sectionBeg))
 
 	lFmt := fmt.Sprintf("%%-%ds", maxPrefixLen)
-	for _, l := range defLogger.lines {
+	for _, l := range d.lines {
 		sb.WriteString(lineStr(lFmt, l) + "\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("%s%s\n", defLinePrefix, sectionEnd))
+	sb.WriteString(fmt.Sprintf("%s%s\n", d.linePrefix, sectionEnd))
 
-	fmt.Fprint(defWriter, sb.String())
+	fmt.Fprint(d.writer, sb.String())
 
-	clear()
+	d.clearLines()
 }
 
-func flushLine(l *line) {
+func (d *Dabugger) flushLine(l *line) {
 	msg := lineStr("%s", l)
-	fmt.Fprintf(defWriter, "%s\n", msg)
+	fmt.Fprintf(d.writer, "%s\n", msg)
 }
 
 func lineStr(lFmt string, l *line) string {
@@ -171,40 +221,40 @@ func lineStr(lFmt string, l *line) string {
 	return msg
 }
 
-func (l *logger) appendLine(line *line) {
-	l.genPrefix(line)
+func (d *Dabugger) appendLine(line *line) {
+	d.genPrefix(line)
 
-	if autoflush {
-		flushLine(line)
+	if d.autoFlush {
+		d.flushLine(line)
 		return
 	}
 
-	defLogger.linesMutex.Lock()
-	defer defLogger.linesMutex.Unlock()
+	d.linesMutex.Lock()
+	defer d.linesMutex.Unlock()
 
-	defLogger.lines = append(defLogger.lines, line)
+	d.lines = append(d.lines, line)
 }
 
-func (l *logger) appendEmpty() {
-	line := &line{src: getSource()}
-	l.appendLine(line)
+func (d *Dabugger) appendEmpty() {
+	line := &line{src: d.getSource()}
+	d.appendLine(line)
 }
 
-func (l *logger) appendMsg(msg string) {
+func (d *Dabugger) appendMsg(msg string) {
 	line := &line{
 		msg: msg,
-		src: getSource(),
+		src: d.getSource(),
 	}
-	l.appendLine(line)
+	d.appendLine(line)
 }
 
-func (l *logger) genPrefix(line *line) {
+func (d *Dabugger) genPrefix(line *line) {
 	c := strings.Builder{}
-	if len(l.contexts) > 0 {
+	if len(d.contexts) > 0 {
 		c.WriteString(" (")
 	}
-	for i := 0; i < len(l.contexts); i++ {
-		context := l.contexts[i]
+	for i := 0; i < len(d.contexts); i++ {
+		context := d.contexts[i]
 		kv := fmt.Sprintf("%s:%s", context.key, context.value)
 
 		if i > 0 {
@@ -212,16 +262,16 @@ func (l *logger) genPrefix(line *line) {
 		}
 		c.WriteString(kv)
 	}
-	if len(l.contexts) > 0 {
+	if len(d.contexts) > 0 {
 		c.WriteString(")")
 	}
 
-	p := fmt.Sprintf("%s%s%s ", defLinePrefix, line.src, c.String())
+	p := fmt.Sprintf("%s%s%s ", d.linePrefix, line.src, c.String())
 
 	line.prefix = p
 }
 
-func getSource() *source {
+func (d *Dabugger) getSource() *source {
 	var pc uintptr
 	var pcs [1]uintptr
 
@@ -230,7 +280,7 @@ func getSource() *source {
 	// 2. getSource
 	// 3. appendLine
 	// 4. Msg, Objs, etc.
-	runtime.Callers(4, pcs[:])
+	runtime.Callers(d.stackSkips, pcs[:])
 	pc = pcs[0]
 
 	fs := runtime.CallersFrames([]uintptr{pc})
@@ -249,6 +299,6 @@ func getSource() *source {
 	}
 }
 
-func clear() {
-	defLogger.lines = []*line{}
+func (l *Dabugger) clearLines() {
+	l.lines = []*line{}
 }

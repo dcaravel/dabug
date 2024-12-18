@@ -11,12 +11,23 @@ import (
 
 func TestHere(t *testing.T) {
 	sb := &strings.Builder{}
-
 	AutoFlush(true)
 	Writer(sb)
 	Here()
 
 	parts := strings.Split(sb.String(), "\n")
+	t.Log("Parts:", parts)
+	require.Len(t, parts, 2)
+	assert.Contains(t, parts[0], "dabug_test")
+	assert.Zero(t, parts[1])
+
+	sb = &strings.Builder{}
+	d := New()
+	d.Writer(sb)
+	d.Here()
+
+	parts = strings.Split(sb.String(), "\n")
+	t.Log("Parts:", parts)
 	require.Len(t, parts, 2)
 	assert.Contains(t, parts[0], "dabug_test")
 	assert.Zero(t, parts[1])
@@ -124,5 +135,8 @@ func TestContext(t *testing.T) {
 	AddContext("sup", "gee")
 	Msg("msg4")
 	RemoveContext("hello")
+	Msg("msg5")
+	RemoveAllContext()
+	Msg("msg6")
 	fmt.Print(sb.String())
 }
