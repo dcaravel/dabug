@@ -62,10 +62,16 @@ func init() {
 }
 
 func New() *Dabugger {
+	prefix := "DABUG: "
+	if defDabugger != nil {
+		prefix = defDabugger.linePrefix
+	}
+
 	return &Dabugger{
 		writer:     os.Stdout,
 		autoFlush:  true,
 		stackSkips: 4,
+		linePrefix: prefix,
 	}
 }
 
