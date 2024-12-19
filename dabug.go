@@ -58,12 +58,14 @@ var (
 
 func init() {
 	defDabugger = New()
+	defDabugger.linePrefix = "DABUG: "
 	defDabugger.stackSkips++
 }
 
 func New() *Dabugger {
-	prefix := "DABUG: "
-	if defDabugger != nil {
+	prefix := ""
+	if defDabugger != nil && defDabugger.linePrefix != "" {
+		// Inherit the line prefix from the default debugger
 		prefix = defDabugger.linePrefix
 	}
 
