@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -77,6 +78,18 @@ func New() *Dabugger {
 	}
 }
 
+// Stack dumps the current stack trace.
+func Stack() {
+	defDabugger.Stack()
+}
+
+func (d *Dabugger) Stack() {
+	stackLines := strings.Split(string(debug.Stack()), "\n")
+	for _, line := range stackLines {
+		d.appendMsg(line)
+	}
+}
+
 // Writer sets the writer to print statements to.
 func Writer(writer io.Writer) {
 	defDabugger.Writer(writer)
@@ -110,16 +123,16 @@ func Msg(format string, v ...any) {
 	defDabugger.Msg(format, v...)
 }
 
-func (l *Dabugger) Msg(format string, v ...any) {
-	l.appendMsg(fmt.Sprintf(format, v...))
+func (d *Dabugger) Msg(format string, v ...any) {
+	d.appendMsg(fmt.Sprintf(format, v...))
 }
 
 func Here() {
 	defDabugger.Here()
 }
 
-func (l *Dabugger) Here() {
-	l.appendEmpty()
+func (d *Dabugger) Here() {
+	d.appendEmpty()
 }
 
 // Objs will append a line to the logger with things printed.
@@ -127,13 +140,13 @@ func Objs(things ...any) {
 	defDabugger.Objs(things...)
 }
 
-func (l *Dabugger) Objs(things ...any) {
+func (d *Dabugger) Objs(things ...any) {
 	var msgs []string
 	for i, t := range things {
 		msg := fmt.Sprintf("[%d] %#v", i, t)
 		msgs = append(msgs, msg)
 	}
-	l.appendMsg(strings.Join(msgs, ", "))
+	d.appendMsg(strings.Join(msgs, ", "))
 }
 
 // AddContext adds a key/value pair that will be prepended to log
@@ -141,40 +154,40 @@ func AddContext(key, value string) {
 	defDabugger.AddContext(key, value)
 }
 
-func (l *Dabugger) AddContext(key, value string) {
-	l.contexts = append(l.contexts, &context{key, value})
+func (d *Dabugger) AddContext(key, value string) {
+	d.contexts = append(d.contexts, &context{key, value})
 }
 
 func RemoveContext(key string) {
 	defDabugger.RemoveContext(key)
 }
 
-func (l *Dabugger) RemoveContext(key string) {
+func (d *Dabugger) RemoveContext(key string) {
 	newContexts := []*context{}
-	for _, c := range l.contexts {
+	for _, c := range d.contexts {
 		if c.key != key {
 			newContexts = append(newContexts, c)
 		}
 	}
 
-	l.contexts = newContexts
+	d.contexts = newContexts
 }
 
 func RemoveAllContext() {
 	defDabugger.RemoveAllContext()
 }
 
-func (l *Dabugger) RemoveAllContext() {
-	clear(l.contexts)
-	l.contexts = nil
+func (d *Dabugger) RemoveAllContext() {
+	clear(d.contexts)
+	d.contexts = nil
 }
 
 func RemoveTopContext() {
 	defDabugger.RemoveTopContext()
 }
 
-func (l *Dabugger) RemoveTopContext() {
-	l.contexts = l.contexts[:len(l.contexts)-1]
+func (d *Dabugger) RemoveTopContext() {
+	d.contexts = d.contexts[:len(d.contexts)-1]
 }
 
 func Flush() {
@@ -307,6 +320,6 @@ func (d *Dabugger) getSource() *source {
 	}
 }
 
-func (l *Dabugger) clearLines() {
-	l.lines = []*line{}
+func (d *Dabugger) clearLines() {
+	d.lines = []*line{}
 }

@@ -140,3 +140,13 @@ func TestContext(t *testing.T) {
 	Msg("msg6")
 	fmt.Print(sb.String())
 }
+
+func TestStack(t *testing.T) {
+	sb := &strings.Builder{}
+
+	Writer(sb)
+	Stack()
+
+	fmt.Print(sb.String())
+
+}
