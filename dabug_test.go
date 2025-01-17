@@ -145,7 +145,7 @@ func TestStack(t *testing.T) {
 	sb := &strings.Builder{}
 
 	Writer(sb)
-	Stack()
+	Stack(10)
 
 	fmt.Print(sb.String())
 

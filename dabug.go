@@ -78,15 +78,19 @@ func New() *Dabugger {
 	}
 }
 
-// Stack dumps the current stack trace.
-func Stack() {
-	defDabugger.Stack()
+// Stack dumps the last num lines of the stack trace, set num to any
+// negative number to print the full stack.
+func Stack(num int) {
+	defDabugger.Stack(num)
 }
 
-func (d *Dabugger) Stack() {
+func (d *Dabugger) Stack(num int) {
 	stackLines := strings.Split(string(debug.Stack()), "\n")
-	for _, line := range stackLines {
+	for i, line := range stackLines {
 		d.appendMsg(line)
+		if num > 0 && i+1 >= num {
+			break
+		}
 	}
 }
 
