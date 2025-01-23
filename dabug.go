@@ -59,10 +59,12 @@ var (
 
 func init() {
 	defDabugger = New()
+	defDabugger.autoFlush = true
 	defDabugger.linePrefix = "DABUG: "
 	defDabugger.stackSkips++
 }
 
+// New creates a new dabugger with autoflush disabled
 func New() *Dabugger {
 	prefix := ""
 	if defDabugger != nil && defDabugger.linePrefix != "" {
@@ -72,7 +74,7 @@ func New() *Dabugger {
 
 	return &Dabugger{
 		writer:     os.Stdout,
-		autoFlush:  true,
+		autoFlush:  false,
 		stackSkips: 4,
 		linePrefix: prefix,
 	}
