@@ -94,9 +94,12 @@ func (d *Dabugger) StoreInContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, dabuggerContextKey, d)
 }
 
-func FromContext(ctx context.Context) (*Dabugger, bool) {
+func FromContext(ctx context.Context) *Dabugger {
 	v, ok := ctx.Value(dabuggerContextKey).(*Dabugger)
-	return v, ok
+	if !ok {
+		return nil
+	}
+	return v
 }
 
 // Stack dumps the last num lines of the stack trace, set num to any
