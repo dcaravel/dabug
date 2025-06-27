@@ -1,6 +1,7 @@
 package dabug
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -22,14 +23,14 @@ type Dabugger struct {
 	// lines contains lines waiting to be flushed
 	lines      []*line
 	linesMutex sync.Mutex
-	contexts   []*context
+	contexts   []*dcontext
 	writer     io.Writer
 	linePrefix string
 	autoFlush  bool
 	stackSkips int
 }
 
-type context struct {
+type dcontext struct {
 	key   string
 	value string
 }
@@ -78,6 +79,21 @@ func New() *Dabugger {
 		stackSkips: 4,
 		linePrefix: prefix,
 	}
+}
+
+type contextKey int
+
+const (
+	dabuggerContextKey contextKey = iota
+)
+
+func (d *Dabugger) StoreInContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, dabuggerContextKey, d)
+}
+
+func FromContext(ctx context.Context) (*Dabugger, bool) {
+	v, ok := ctx.Value(dabuggerContextKey).(*Dabugger)
+	return v, ok
 }
 
 // Stack dumps the last num lines of the stack trace, set num to any
@@ -161,7 +177,7 @@ func AddContext(key, value string) {
 }
 
 func (d *Dabugger) AddContext(key, value string) {
-	d.contexts = append(d.contexts, &context{key, value})
+	d.contexts = append(d.contexts, &dcontext{key, value})
 }
 
 func RemoveContext(key string) {
@@ -169,7 +185,7 @@ func RemoveContext(key string) {
 }
 
 func (d *Dabugger) RemoveContext(key string) {
-	newContexts := []*context{}
+	newContexts := []*dcontext{}
 	for _, c := range d.contexts {
 		if c.key != key {
 			newContexts = append(newContexts, c)
