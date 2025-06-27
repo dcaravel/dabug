@@ -88,6 +88,9 @@ const (
 )
 
 func (d *Dabugger) StoreInContext(ctx context.Context) context.Context {
+	if d == nil {
+		return nil
+	}
 	return context.WithValue(ctx, dabuggerContextKey, d)
 }
 
@@ -103,6 +106,9 @@ func Stack(num int) {
 }
 
 func (d *Dabugger) Stack(num int) {
+	if d == nil {
+		return
+	}
 	stackLines := strings.Split(string(debug.Stack()), "\n")
 	for i, line := range stackLines {
 		d.appendMsg(line)
@@ -118,6 +124,9 @@ func Writer(writer io.Writer) {
 }
 
 func (d *Dabugger) Writer(writer io.Writer) {
+	if d == nil {
+		return
+	}
 	d.writer = writer
 }
 
@@ -127,6 +136,9 @@ func LinePrefix(prefix string) {
 }
 
 func (d *Dabugger) LinePrefix(prefix string) {
+	if d == nil {
+		return
+	}
 	d.linePrefix = prefix
 }
 
@@ -135,6 +147,9 @@ func AutoFlush(flush bool) {
 }
 
 func (d *Dabugger) AutoFlush(flush bool) {
+	if d == nil {
+		return
+	}
 	d.autoFlush = flush
 	if len(defDabugger.lines) > 0 {
 		d.Flush()
@@ -146,6 +161,9 @@ func Msg(format string, v ...any) {
 }
 
 func (d *Dabugger) Msg(format string, v ...any) {
+	if d == nil {
+		return
+	}
 	d.appendMsg(fmt.Sprintf(format, v...))
 }
 
@@ -154,6 +172,9 @@ func Here() {
 }
 
 func (d *Dabugger) Here() {
+	if d == nil {
+		return
+	}
 	d.appendEmpty()
 }
 
@@ -163,6 +184,9 @@ func Objs(things ...any) {
 }
 
 func (d *Dabugger) Objs(things ...any) {
+	if d == nil {
+		return
+	}
 	var msgs []string
 	for i, t := range things {
 		msg := fmt.Sprintf("[%d] %#v", i, t)
@@ -177,6 +201,9 @@ func AddContext(key, value string) {
 }
 
 func (d *Dabugger) AddContext(key, value string) {
+	if d == nil {
+		return
+	}
 	d.contexts = append(d.contexts, &dcontext{key, value})
 }
 
@@ -185,6 +212,9 @@ func RemoveContext(key string) {
 }
 
 func (d *Dabugger) RemoveContext(key string) {
+	if d == nil {
+		return
+	}
 	newContexts := []*dcontext{}
 	for _, c := range d.contexts {
 		if c.key != key {
@@ -200,6 +230,9 @@ func RemoveAllContext() {
 }
 
 func (d *Dabugger) RemoveAllContext() {
+	if d == nil {
+		return
+	}
 	clear(d.contexts)
 	d.contexts = nil
 }
@@ -209,6 +242,9 @@ func RemoveTopContext() {
 }
 
 func (d *Dabugger) RemoveTopContext() {
+	if d == nil {
+		return
+	}
 	d.contexts = d.contexts[:len(d.contexts)-1]
 }
 
@@ -217,6 +253,9 @@ func Flush() {
 }
 
 func (d *Dabugger) Flush() {
+	if d == nil {
+		return
+	}
 	d.linesMutex.Lock()
 	defer d.linesMutex.Unlock()
 
@@ -292,6 +331,9 @@ func (d *Dabugger) appendMsg(msg string) {
 }
 
 func (d *Dabugger) genPrefix(line *line) {
+	if d == nil {
+		return
+	}
 	c := strings.Builder{}
 	if len(d.contexts) > 0 {
 		c.WriteString(" (")
